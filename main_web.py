@@ -5,7 +5,7 @@ import traceback
 
 from read_excel import doc_tkb
 from read_excel_teacher import doc_tkb_giangvien
-from google_calendar import dang_nhap_google, tao_su_kien
+from google_calendar import dang_nhap_google, tao_su_kien, xoa_su_kien_tkb
 
 
 # ---------------- Helper ----------------
@@ -60,14 +60,30 @@ def main():
                         else:
                             events = doc_tkb_giangvien(bio, ten_gv)
 
+                    # Lưu trạng thái checked cho từng sự kiện
+                    for e in events:
+                        e["checked"] = True
                     st.session_state["preview_events"] = events
                 except Exception as e:
                     show_exception(e)
 
+        # ---------------- HIỂN THỊ PREVIEW ----------------
         if "preview_events" in st.session_state and st.session_state["preview_events"]:
             events = st.session_state["preview_events"]
             st.success(f"✅ Đã đọc được {len(events)} sự kiện")
-            st.dataframe(events)
+
+            selected = []
+            for idx, e in enumerate(events):
+                checked = st.checkbox(
+                    f"{e['mon']} - {e.get('phong','')} - {e.get('gio_bd','')}→{e.get('gio_kt','')}",
+                    value=e.get("checked", True),
+                    key=f"event_{idx}"
+                )
+                e["checked"] = checked
+                if checked:
+                    selected.append(e)
+
+            st.session_state["selected_events"] = selected
         else:
             st.info("Chưa có dữ liệu xem trước. Bấm '👀 Xem trước' để đọc file.")
 
@@ -107,9 +123,9 @@ def main():
         # ---------------- TẠO SỰ KIỆN ----------------
         if st.button("📅 Tạo sự kiện trên Google Calendar"):
             try:
-                events = st.session_state.get("preview_events")
+                events = st.session_state.get("selected_events", [])
                 if not events:
-                    st.warning("⚠️ Chưa có dữ liệu sự kiện. Hãy bấm '👀 Xem trước' trước.")
+                    st.warning("⚠️ Chưa chọn sự kiện nào.")
                 else:
                     if not (has_credentials and has_token):
                         st.error("❌ Thiếu credentials/token. Không thể đăng nhập Google.")
@@ -129,17 +145,26 @@ def main():
                                         weekday=e["thu"],
                                         start_time=e["gio_bd"],
                                         end_time=e["gio_kt"],
-                                        reminders=[
-                                            {"method": "popup", "minutes": 10}
-                                        ],
+                                        reminders=[{"method": "popup", "minutes": 10}],
                                         prefix=prefix,
                                     )
                                     created += 1
                                 except Exception as sub_e:
-                                    st.warning(
-                                        f"Lỗi tạo event '{e.get('mon')}' — {sub_e}"
-                                    )
+                                    st.warning(f"Lỗi tạo event '{e.get('mon')}' — {sub_e}")
                             st.success(f"✅ Hoàn tất! Đã tạo {created} sự kiện.")
+            except Exception as e:
+                show_exception(e)
+
+        # ---------------- XOÁ SỰ KIỆN ----------------
+        if st.button("🗑️ Xoá toàn bộ sự kiện theo prefix"):
+            try:
+                if not (has_credentials and has_token):
+                    st.error("❌ Thiếu credentials/token. Không thể đăng nhập Google.")
+                else:
+                    with st.spinner(f"⏳ Đang xoá sự kiện prefix '{prefix}'..."):
+                        service = dang_nhap_google()
+                        count = xoa_su_kien_tkb(service, prefix=prefix)
+                        st.success(f"🗑️ Đã xoá {count} sự kiện có prefix '{prefix}'.")
             except Exception as e:
                 show_exception(e)
 
