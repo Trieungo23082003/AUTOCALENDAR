@@ -1,5 +1,4 @@
 import pandas as pd
-import os
 import re
 import unicodedata
 from tiet_gio import quy_doi_tiet
@@ -28,29 +27,23 @@ def find_column_by_keywords(df: pd.DataFrame, keywords):
 
 def doc_tkb_giangvien(file_path, ten_giangvien):
     """
-    Đọc thời khóa biểu giảng viên từ file Excel (hàng tiêu đề dòng 9 → header=8).
+    Đọc thời khóa biểu giảng viên từ file Excel (header=7 → tiêu đề dòng 8).
     Lọc theo tên giảng viên (không phân biệt hoa/thường, dấu).
+    Trả về list[dict] giống doc_tkb bên sinh viên.
     """
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Không tìm thấy file: {file_path}")
+    # chọn engine theo đuôi file hoặc buffer
+    engine = None
+    if isinstance(file_path, str):
+        ext = file_path.lower().split(".")[-1]
+        if ext == "xlsx":
+            engine = "openpyxl"
+        elif ext == "xls":
+            engine = "xlrd"
 
-    print(f"Đang đọc TKB giảng viên từ: {file_path}")
-
-    # chọn engine theo đuôi file
-    ext = os.path.splitext(file_path)[-1].lower()
-    if ext == ".xlsx":
-        engine = "openpyxl"
-    elif ext == ".xls":
-        engine = "xlrd"
-    else:
-        raise ValueError("File không phải Excel (.xls hoặc .xlsx)")
-
-    # đọc từ dòng 9
+    # đọc từ dòng 8 (header=7)
     df = pd.read_excel(file_path, sheet_name=0, engine=engine, header=7)
 
-    print("Cột tìm thấy trong file:", df.columns.tolist())
-
-    # xác định cột
+    # xác định cột quan trọng
     col_mon = find_column_by_keywords(df, ["lop", "hoc", "phan"])
     col_thu   = df.columns[9]   # cột J = "Thứ"
     col_tiet = find_column_by_keywords(df, ["tiet"])
@@ -59,7 +52,7 @@ def doc_tkb_giangvien(file_path, ten_giangvien):
     col_ngaykt = find_column_by_keywords(df, ["ngay", "kt"])
     col_gv = find_column_by_keywords(df, ["giao", "vien"])
 
-    # lọc theo tên giảng viên (bỏ dấu + thường hóa)
+    # lọc theo tên giảng viên
     norm_target = _normalize_text(ten_giangvien)
     df[col_gv] = df[col_gv].astype(str)
     df_gv = df[df[col_gv].apply(lambda x: norm_target in _normalize_text(x))].copy()
@@ -71,9 +64,12 @@ def doc_tkb_giangvien(file_path, ten_giangvien):
         # Thứ
         thu = None
         if pd.notna(row[col_thu]):
-            m = re.search(r"\d+", str(row[col_thu]))
-            if m:
-                thu = int(m.group())
+            try:
+                thu = int(float(str(row[col_thu]).strip()))
+            except Exception:
+                m = re.search(r"\d+", str(row[col_thu]))
+                if m:
+                    thu = int(m.group())
 
         # Tiết
         tiet_raw = str(row[col_tiet]).strip()
@@ -93,13 +89,11 @@ def doc_tkb_giangvien(file_path, ten_giangvien):
         # Ngày bắt đầu / kết thúc
         ngay_bd = (
             pd.to_datetime(row[col_ngaybd]).strftime("%d/%m/%Y")
-            if pd.notna(row[col_ngaybd])
-            else ""
+            if pd.notna(row[col_ngaybd]) else ""
         )
         ngay_kt = (
             pd.to_datetime(row[col_ngaykt]).strftime("%d/%m/%Y")
-            if pd.notna(row[col_ngaykt])
-            else ""
+            if pd.notna(row[col_ngaykt]) else ""
         )
 
         # Giảng viên
@@ -121,11 +115,3 @@ def doc_tkb_giangvien(file_path, ten_giangvien):
         )
 
     return events
-
-
-if __name__ == "__main__":
-    file_excel = "TKB HK1 25-26 180925 ( chính thức ).xls"
-    ds = doc_tkb_giangvien(file_excel, "NGUYỄN CÔNG hậu")  # viết hoa/thường/dấu đều được
-    print("===== DANH SÁCH MÔN HỌC CỦA GIẢNG VIÊN =====")
-    for e in ds:
-        print(e)
