@@ -31,7 +31,7 @@ def ensure_credentials_files():
 
 # ---------------- Đăng nhập Google ----------------
 def dang_nhap_google():
-    # Luôn tạo lại credentials.json và token.json từ biến môi trường
+    # Luôn tạo lại credentials.json và token.json từ biến môi trường (Railway)
     ensure_credentials_files()
 
     creds = None
@@ -54,16 +54,17 @@ def dang_nhap_google():
             print(f"❌ Lỗi refresh token: {e}")
             creds = None
 
-    # Nếu không có token hợp lệ thì login (chỉ local mới dùng được)
+    # Nếu không có token hợp lệ thì login (chỉ chạy local được)
     if not creds or not creds.valid:
         if not os.path.exists("credentials.json"):
             raise FileNotFoundError("❌ Không tìm thấy credentials.json")
         try:
             flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)  # Railway không mở browser được
+            # Yêu cầu refresh_token luôn luôn được cấp
+            creds = flow.run_local_server(port=0, access_type="offline", prompt="consent")
             with open('token.json', 'w') as token:
                 token.write(creds.to_json())
-            print("✅ Đăng nhập Google thành công (local)")
+            print("✅ Đăng nhập Google thành công (local) và đã lưu token.json")
         except Exception as e:
             st.error(f"Lỗi đăng nhập Google: {e}")
             print(f"❌ Lỗi đăng nhập Google: {e}")
