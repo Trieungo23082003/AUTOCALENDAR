@@ -136,7 +136,15 @@ def main():
     # Xem trước
     if file_excel and st.button("👀 Xem trước"):
         if mode == "Sinh viên":
-            events = doc_tkb(file_excel)
+            import io
+            import pandas as pd
+
+            # Truyền buffer thay vì path
+            if mode == "Sinh viên":
+                events = doc_tkb(io.BytesIO(file_excel.read()))
+            else:
+                events = doc_tkb_giangvien(io.BytesIO(file_excel.read()), ten_gv)
+
         else:
             if not ten_gv:
                 st.warning("Hãy nhập tên giảng viên.")
@@ -163,3 +171,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
