@@ -1,5 +1,5 @@
 import pandas as pd
-import  os, re
+import re
 from tiet_gio import quy_doi_tiet
 
 
@@ -13,7 +13,7 @@ def parse_thoigian_hoc(text):
         return []
     ngay_bat_dau, ngay_ket_thuc = m.groups()
 
-    # Cắt thành nhiều đoạn theo "Thứ" (kể cả THỨ in hoa, viết thường, hoặc có dấu)
+    # Cắt thành nhiều đoạn theo "Thứ"
     parts = re.split(r"(?=Thứ\s*\d+)", text, flags=re.IGNORECASE)
 
     results = []
@@ -34,12 +34,10 @@ def parse_thoigian_hoc(text):
         # ----------------- PHÒNG HỌC + GIẢNG VIÊN -----------------
         phong, giang_vien = "", ""
         if ',' in part:
-            # phần sau dấu phẩy cuối = giảng viên
             left, giang_vien = part.rsplit(',', 1)
             giang_vien = giang_vien.strip()
             left = left.strip()
 
-            # ưu tiên lấy phòng sau dấu ')' cuối
             if ')' in left:
                 phong = left.split(')')[-1].strip()
             elif ',' in left:
@@ -47,7 +45,6 @@ def parse_thoigian_hoc(text):
             else:
                 phong = left.strip()
 
-            # dọn ký tự thừa
             phong = phong.lstrip('),(').strip()
 
         results.append({
@@ -66,9 +63,6 @@ def parse_thoigian_hoc(text):
 
 
 def doc_tkb(file_path):
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Không tìm thấy file: {file_path}")
-
     print(f"Đang đọc file: {file_path}")
     df = pd.read_excel(file_path, header=None)
 
@@ -91,10 +85,3 @@ def doc_tkb(file_path):
             })
 
     return events
-
-
-if __name__ == "__main__":
-    ds_su_kien = doc_tkb(".")
-    print("===== DANH SÁCH MÔN HỌC =====")
-    for e in ds_su_kien:
-        print(e)
