@@ -1,174 +1,140 @@
 import streamlit as st
+import io
+import os
+import traceback
+
 from read_excel import doc_tkb
 from read_excel_teacher import doc_tkb_giangvien
-from google_calendar import dang_nhap_google, tao_su_kien, xoa_su_kien_tkb
-
-# ------------------------------------------------------
-# Hàm tạo sự kiện cho sinh viên
-# ------------------------------------------------------
-def len_lich(file_excel, remind_minutes, remind_method, prefix, events):
-    try:
-        st.write(f"📊 Lên lịch {len(events)} sự kiện sinh viên")
-
-        if not events:
-            st.warning("Không tìm thấy dữ liệu TKB sinh viên trong file.")
-            return
-
-        service = dang_nhap_google()
-        reminders = [{"method": remind_method, "minutes": remind_minutes}]
-        created_count = 0
-
-        for e in events:
-            if not e["gio_bd"] or not e["gio_kt"] or not e["thu"]:
-                st.write(f"⏩ Bỏ qua: {e['mon']} - thiếu dữ liệu")
-                continue
-
-            tao_su_kien(
-                service=service,
-                mon=e["mon"],
-                phong=e["phong"],
-                giang_vien=e["giang_vien"],
-                start_date=e["ngay_bat_dau"],
-                end_date=e["ngay_ket_thuc"],
-                weekday=e["thu"],
-                start_time=e["gio_bd"],
-                end_time=e["gio_kt"],
-                reminders=reminders,
-                prefix=prefix
-            )
-            st.success(f"✅ SV: {e['mon']} - {e['gio_bd']} → {e['gio_kt']} Thứ {e['thu']}")
-            created_count += 1
-
-        if created_count > 0:
-            st.info(f"Đã lên lịch {created_count} sự kiện cho sinh viên!")
-        else:
-            st.warning("Không có sự kiện hợp lệ nào được tạo.")
-
-    except Exception as ex:
-        st.error(f"Lỗi: {ex}")
+from google_calendar import dang_nhap_google, tao_su_kien
 
 
-# ------------------------------------------------------
-# Hàm tạo sự kiện cho giảng viên
-# ------------------------------------------------------
-def len_lich_gv(file_excel, ten_giangvien, remind_minutes, remind_method, prefix, events):
-    try:
-        st.write(f"📊 Lên lịch {len(events)} sự kiện cho giảng viên {ten_giangvien}")
-
-        if not events:
-            st.warning(f"Không tìm thấy TKB giảng viên '{ten_giangvien}' trong file.")
-            return
-
-        service = dang_nhap_google()
-        reminders = [{"method": remind_method, "minutes": remind_minutes}]
-        created_count = 0
-
-        for e in events:
-            if not e["gio_bd"] or not e["gio_kt"] or not e["thu"]:
-                st.write(f"⏩ Bỏ qua: {e['mon']} ({e['giang_vien']}) - thiếu dữ liệu")
-                continue
-
-            tao_su_kien(
-                service=service,
-                mon=e["mon"],
-                phong=e["phong"],
-                giang_vien=None,
-                start_date=e["ngay_bat_dau"],
-                end_date=e["ngay_ket_thuc"],
-                weekday=e["thu"],
-                start_time=e["gio_bd"],
-                end_time=e["gio_kt"],
-                reminders=reminders,
-                prefix=prefix
-            )
-            st.success(f"✅ GV: {e['mon']} ({e['giang_vien']}) - {e['gio_bd']} → {e['gio_kt']} Thứ {e['thu']}")
-            created_count += 1
-
-        if created_count > 0:
-            st.info(f"Đã lên lịch {created_count} sự kiện cho giảng viên {ten_giangvien}!")
-        else:
-            st.warning("Không có sự kiện hợp lệ nào được tạo.")
-
-    except Exception as ex:
-        st.error(f"Lỗi: {ex}")
+# ---------------- Helper ----------------
+def get_uploaded_bytes(uploaded_file):
+    """Lưu bytes của file upload vào session_state để reuse sau rerun"""
+    if uploaded_file is None:
+        return None
+    if (
+        "uploaded_name" not in st.session_state
+        or st.session_state["uploaded_name"] != uploaded_file.name
+    ):
+        st.session_state["uploaded_bytes"] = uploaded_file.read()
+        st.session_state["uploaded_name"] = uploaded_file.name
+    return st.session_state.get("uploaded_bytes")
 
 
-# ------------------------------------------------------
-# Hàm xóa sự kiện TKB
-# ------------------------------------------------------
-def xoa_lich(prefix):
-    try:
-        service = dang_nhap_google()
-        deleted_count = xoa_su_kien_tkb(service, prefix=prefix)
-        st.success(f"🗑️ Đã xóa {deleted_count} sự kiện có prefix '{prefix}'.")
-    except Exception as ex:
-        st.error(f"Lỗi: {ex}")
+def show_exception(e):
+    st.error(f"Lỗi: {e}")
+    st.exception(traceback.format_exc())
 
 
-# ------------------------------------------------------
-# Giao diện chính (Streamlit)
-# ------------------------------------------------------
+# ---------------- Streamlit App ----------------
 def main():
-    st.title("📅 Lên lịch thời khóa biểu tự động (Web)")
+    st.set_page_config(page_title="AutoCalendar", layout="wide")
+    st.title("📅 AutoCalendar - TKB lên Google Calendar")
 
-    # File Excel
-    file_excel = st.file_uploader("Chọn file Excel TKB", type=["xls", "xlsx"])
+    # Chọn mode
+    mode = st.radio("Chế độ:", ["Sinh viên", "Giảng viên"])
 
-    # Chế độ
-    mode = st.radio("Chế độ", ["Sinh viên", "Giảng viên"])
+    # Nhập tên giảng viên nếu cần
     ten_gv = ""
     if mode == "Giảng viên":
-        ten_gv = st.text_input("Tên giảng viên")
+        ten_gv = st.text_input("Nhập tên giảng viên:")
 
-    # Nhắc nhở
-    remind_value = st.number_input("Nhắc trước (số)", min_value=1, value=10)
-    unit = st.selectbox("Đơn vị", ["phút", "giờ", "ngày"])
-    if unit == "giờ":
-        remind_value *= 60
-    elif unit == "ngày":
-        remind_value *= 1440
+    # Nhập prefix
+    prefix = st.text_input("Prefix sự kiện:", "[TKB]")
 
-    remind_method = st.selectbox("Hình thức nhắc", ["popup", "email"])
+    # Upload file Excel
+    file_excel = st.file_uploader("Tải lên file Excel TKB", type=["xls", "xlsx"])
+    file_bytes = get_uploaded_bytes(file_excel)
 
-    # Prefix
-    prefix = st.text_input("Tiền tố sự kiện", "[TKB]")
+    if file_excel and file_bytes:
+        st.write(f"Đã tải file: {file_excel.name} ({len(file_bytes)} bytes)")
 
-    # Xem trước
-    if file_excel and st.button("👀 Xem trước"):
-        if mode == "Sinh viên":
-            import io
-            import pandas as pd
+        # ---------------- XEM TRƯỚC ----------------
+        if st.button("👀 Xem trước"):
+            with st.spinner("⏳ Đang xử lý dữ liệu..."):
+                try:
+                    bio = io.BytesIO(file_bytes)
+                    if mode == "Sinh viên":
+                        events = doc_tkb(bio)
+                    else:
+                        if not ten_gv:
+                            st.warning("Hãy nhập tên giảng viên.")
+                            events = []
+                        else:
+                            events = doc_tkb_giangvien(bio, ten_gv)
 
-            # Truyền buffer thay vì path
-            if mode == "Sinh viên":
-                events = doc_tkb(io.BytesIO(file_excel.read()))
-            else:
-                events = doc_tkb_giangvien(io.BytesIO(file_excel.read()), ten_gv)
+                    st.session_state["preview_events"] = events
+                except Exception as e:
+                    show_exception(e)
 
+        # Hiển thị dữ liệu preview
+        if "preview_events" in st.session_state and st.session_state["preview_events"]:
+            events = st.session_state["preview_events"]
+            st.success(f"✅ Đã đọc được {len(events)} sự kiện")
+            st.dataframe(events)
         else:
-            if not ten_gv:
-                st.warning("Hãy nhập tên giảng viên.")
-                return
-            events = doc_tkb_giangvien(file_excel, ten_gv)
+            st.info("Chưa có dữ liệu xem trước. Bấm '👀 Xem trước' để đọc file.")
 
-        if not events:
-            st.warning("Không tìm thấy dữ liệu TKB.")
-            return
+        # ---------------- KIỂM TRA CREDENTIALS ----------------
+        has_credentials = os.path.exists("credentials.json") or bool(
+            os.environ.get("GOOGLE_CREDENTIALS")
+        )
+        has_token = os.path.exists("token.json") or bool(os.environ.get("GOOGLE_TOKEN"))
 
-        st.dataframe(events)
+        if not has_credentials:
+            st.info(
+                "⚠️ Chưa có credentials.json. Trên Railway hãy đặt biến môi trường "
+                "`GOOGLE_CREDENTIALS` (nội dung file credentials.json)."
+            )
+        if not has_token:
+            st.info(
+                "⚠️ Chưa có token.json. Hãy chạy local để sinh token.json, "
+                "sau đó copy nội dung vào biến môi trường `GOOGLE_TOKEN` trên Railway."
+            )
 
-        # Lên lịch
-        if st.button("📌 Lên sự kiện đã chọn"):
-            if mode == "Sinh viên":
-                len_lich(file_excel, remind_value, remind_method, prefix, events)
-            else:
-                len_lich_gv(file_excel, ten_gv, remind_value, remind_method, prefix, events)
+        # ---------------- TẠO SỰ KIỆN ----------------
+        if st.button("📅 Tạo sự kiện trên Google Calendar"):
+            try:
+                events = st.session_state.get("preview_events")
+                if not events:
+                    st.warning("⚠️ Chưa có dữ liệu sự kiện. Hãy bấm '👀 Xem trước' trước.")
+                else:
+                    if not (has_credentials and has_token):
+                        st.error("❌ Thiếu credentials/token. Không thể đăng nhập Google.")
+                    else:
+                        with st.spinner("⏳ Đang tạo sự kiện trên Google Calendar..."):
+                            service = dang_nhap_google()
+                            created = 0
+                            for e in events:
+                                try:
+                                    tao_su_kien(
+                                        service=service,
+                                        mon=e["mon"],
+                                        phong=e.get("phong", ""),
+                                        giang_vien=e.get("giang_vien", None),
+                                        start_date=e["ngay_bat_dau"],
+                                        end_date=e["ngay_ket_thuc"],
+                                        weekday=e["thu"],
+                                        start_time=e["gio_bd"],
+                                        end_time=e["gio_kt"],
+                                        reminders=[
+                                            {"method": "popup", "minutes": 10}
+                                        ],
+                                        prefix=prefix,
+                                    )
+                                    created += 1
+                                except Exception as sub_e:
+                                    st.warning(
+                                        f"Lỗi tạo event '{e.get('mon')}' — {sub_e}"
+                                    )
+                            st.success(f"✅ Hoàn tất! Đã tạo {created} sự kiện.")
+            except Exception as e:
+                show_exception(e)
 
-    # Xóa sự kiện
-    if st.button("🗑 Xóa sự kiện theo prefix"):
-        xoa_lich(prefix)
+    else:
+        st.info("⬆️ Vui lòng tải lên file Excel để bắt đầu.")
 
 
 if __name__ == "__main__":
     main()
-
