@@ -1,140 +1,156 @@
-import streamlit as st
-import io
 import os
-import traceback
+import datetime as dt
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+import streamlit as st
 
-from read_excel import doc_tkb
-from read_excel_teacher import doc_tkb_giangvien
-from google_calendar import dang_nhap_google, tao_su_kien
+# Phạm vi quyền cho Google Calendar
+SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 
-# ---------------- Helper ----------------
-def get_uploaded_bytes(uploaded_file):
-    """Lưu bytes của file upload vào session_state để reuse sau rerun"""
-    if uploaded_file is None:
+def _normalize_env_value(s: str) -> str:
+    """Chuẩn hoá giá trị trong env var:
+    - loại bỏ dấu ngoặc kép/dấu nháy đôi nếu người dùng vô tình bao quanh
+    - chuyển các chuỗi '\\n' thành newline thực
+    - trim khoảng trắng đầu/cuối
+    """
+    if s is None:
         return None
-    if (
-        "uploaded_name" not in st.session_state
-        or st.session_state["uploaded_name"] != uploaded_file.name
-    ):
-        st.session_state["uploaded_bytes"] = uploaded_file.read()
-        st.session_state["uploaded_name"] = uploaded_file.name
-    return st.session_state.get("uploaded_bytes")
+    s = str(s).strip()
+    if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
+        s = s[1:-1]
+    s = s.replace('\\n', '\n')  # đổi chuỗi "\n" thành newline thực
+    return s
 
 
-def show_exception(e):
-    st.error(f"Lỗi: {e}")
-    st.exception(traceback.format_exc())
-
-
-# ---------------- Streamlit App ----------------
-def main():
-    st.set_page_config(page_title="AutoCalendar", layout="wide")
-    st.title("📅 AutoCalendar - TKB lên Google Calendar")
-
-    # Chọn mode
-    mode = st.radio("Chế độ:", ["Sinh viên", "Giảng viên"])
-
-    # Nhập tên giảng viên nếu cần
-    ten_gv = ""
-    if mode == "Giảng viên":
-        ten_gv = st.text_input("Nhập tên giảng viên:")
-
-    # Nhập prefix
-    prefix = st.text_input("Prefix sự kiện:", "[TKB]")
-
-    # Upload file Excel
-    file_excel = st.file_uploader("Tải lên file Excel TKB", type=["xls", "xlsx"])
-    file_bytes = get_uploaded_bytes(file_excel)
-
-    if file_excel and file_bytes:
-        st.write(f"Đã tải file: {file_excel.name} ({len(file_bytes)} bytes)")
-
-        # ---------------- XEM TRƯỚC ----------------
-        if st.button("👀 Xem trước"):
-            with st.spinner("⏳ Đang xử lý dữ liệu..."):
-                try:
-                    bio = io.BytesIO(file_bytes)
-                    if mode == "Sinh viên":
-                        events = doc_tkb(bio)
-                    else:
-                        if not ten_gv:
-                            st.warning("Hãy nhập tên giảng viên.")
-                            events = []
-                        else:
-                            events = doc_tkb_giangvien(bio, ten_gv)
-
-                    st.session_state["preview_events"] = events
-                except Exception as e:
-                    show_exception(e)
-
-        # Hiển thị dữ liệu preview
-        if "preview_events" in st.session_state and st.session_state["preview_events"]:
-            events = st.session_state["preview_events"]
-            st.success(f"✅ Đã đọc được {len(events)} sự kiện")
-            st.dataframe(events)
-        else:
-            st.info("Chưa có dữ liệu xem trước. Bấm '👀 Xem trước' để đọc file.")
-
-        # ---------------- KIỂM TRA CREDENTIALS ----------------
-        has_credentials = os.path.exists("credentials.json") or bool(
-            os.environ.get("GOOGLE_CREDENTIALS")
-        )
-        has_token = os.path.exists("token.json") or bool(os.environ.get("GOOGLE_TOKEN"))
-
-        if not has_credentials:
-            st.info(
-                "⚠️ Chưa có credentials.json. Trên Railway hãy đặt biến môi trường "
-                "`GOOGLE_CREDENTIALS` (nội dung file credentials.json)."
-            )
-        if not has_token:
-            st.info(
-                "⚠️ Chưa có token.json. Hãy chạy local để sinh token.json, "
-                "sau đó copy nội dung vào biến môi trường `GOOGLE_TOKEN` trên Railway."
-            )
-
-        # ---------------- TẠO SỰ KIỆN ----------------
-        if st.button("📅 Tạo sự kiện trên Google Calendar"):
-            try:
-                events = st.session_state.get("preview_events")
-                if not events:
-                    st.warning("⚠️ Chưa có dữ liệu sự kiện. Hãy bấm '👀 Xem trước' trước.")
-                else:
-                    if not (has_credentials and has_token):
-                        st.error("❌ Thiếu credentials/token. Không thể đăng nhập Google.")
-                    else:
-                        with st.spinner("⏳ Đang tạo sự kiện trên Google Calendar..."):
-                            service = dang_nhap_google()
-                            created = 0
-                            for e in events:
-                                try:
-                                    tao_su_kien(
-                                        service=service,
-                                        mon=e["mon"],
-                                        phong=e.get("phong", ""),
-                                        giang_vien=e.get("giang_vien", None),
-                                        start_date=e["ngay_bat_dau"],
-                                        end_date=e["ngay_ket_thuc"],
-                                        weekday=e["thu"],
-                                        start_time=e["gio_bd"],
-                                        end_time=e["gio_kt"],
-                                        reminders=[
-                                            {"method": "popup", "minutes": 10}
-                                        ],
-                                        prefix=prefix,
-                                    )
-                                    created += 1
-                                except Exception as sub_e:
-                                    st.warning(
-                                        f"Lỗi tạo event '{e.get('mon')}' — {sub_e}"
-                                    )
-                            st.success(f"✅ Hoàn tất! Đã tạo {created} sự kiện.")
-            except Exception as e:
-                show_exception(e)
-
+# ---------------- Đảm bảo có file credentials/token ----------------
+def ensure_credentials_files():
+    creds_str = os.environ.get("GOOGLE_CREDENTIALS")
+    creds_str = _normalize_env_value(creds_str)
+    if creds_str:
+        try:
+            with open("credentials.json", "w", encoding="utf-8") as f:
+                f.write(creds_str)
+            print(f"✅ Đã tạo credentials.json từ biến môi trường (chiều dài: {len(creds_str)} chars)")
+        except Exception as e:
+            print(f"❌ Lỗi khi ghi credentials.json: {e}")
     else:
-        st.info("⬆️ Vui lòng tải lên file Excel để bắt đầu.")
+        print("❌ Không tìm thấy GOOGLE_CREDENTIALS")
+
+    token_str = os.environ.get("GOOGLE_TOKEN")
+    token_str = _normalize_env_value(token_str)
+    if token_str:
+        try:
+            with open("token.json", "w", encoding="utf-8") as f:
+                f.write(token_str)
+            print(f"✅ Đã tạo token.json từ biến môi trường (chiều dài: {len(token_str)} chars)")
+        except Exception as e:
+            print(f"❌ Lỗi khi ghi token.json: {e}")
+    else:
+        print("⚠️ Không tìm thấy GOOGLE_TOKEN")
 
 
-if __name__ == "__main__":
-    main()
+# ---------------- Đăng nhập Google ----------------
+def dang_nhap_google():
+    # Luôn tạo lại credentials.json và token.json từ biến môi trường (Railway)
+    ensure_credentials_files()
+
+    creds = None
+    # Đọc token nếu có
+    if os.path.exists('token.json'):
+        try:
+            creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+            print("🔑 Đọc token.json thành công")
+        except Exception as e:
+            st.error(f"Lỗi khi đọc token.json: {e}")
+            print(f"❌ Lỗi khi đọc token.json: {e}")
+
+    # Refresh nếu token hết hạn
+    if creds and creds.expired and creds.refresh_token:
+        try:
+            creds.refresh(Request())
+            print("🔄 Refresh token thành công")
+        except Exception as e:
+            st.error(f"Lỗi refresh token: {e}")
+            print(f"❌ Lỗi refresh token: {e}")
+            creds = None
+
+    # Nếu không có token hợp lệ thì login (chỉ chạy local được)
+    if not creds or not creds.valid:
+        if not os.path.exists("credentials.json"):
+            raise FileNotFoundError("❌ Không tìm thấy credentials.json")
+        try:
+            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0, access_type="offline", prompt="consent")
+            with open('token.json', 'w') as token:
+                token.write(creds.to_json())
+            print("✅ Đăng nhập Google thành công (local) và đã lưu token.json")
+        except Exception as e:
+            st.error(f"Lỗi đăng nhập Google: {e}")
+            print(f"❌ Lỗi đăng nhập Google: {e}")
+
+    service = build('calendar', 'v3', credentials=creds)
+    return service
+
+
+# ---------------- Tạo sự kiện ----------------
+def tao_su_kien(service, mon, phong, giang_vien,
+                start_date, end_date, weekday, start_time, end_time,
+                reminders=None, prefix="[TKB]"):
+
+    # Parse ngày
+    start_date = dt.datetime.strptime(start_date.strip(), "%d/%m/%Y").date()
+    end_date = dt.datetime.strptime(end_date.strip(), "%d/%m/%Y").date()
+
+    # Google weekday: 0=Mon, 6=Sun
+    google_weekday = weekday - 2
+    if google_weekday < 0:
+        google_weekday = 6
+
+    current = start_date
+    while current.weekday() != google_weekday:
+        current += dt.timedelta(days=1)
+
+    start_dt = dt.datetime.strptime(
+        f"{current.strftime('%d/%m/%Y')} {start_time}", "%d/%m/%Y %H:%M"
+    )
+    end_dt = dt.datetime.strptime(
+        f"{current.strftime('%d/%m/%Y')} {end_time}", "%d/%m/%Y %H:%M"
+    )
+
+    description = f"Phòng: {phong}"
+    if giang_vien and str(giang_vien).strip().lower() not in ["none", "nan", ""]:
+        description += f"\nGiảng viên: {giang_vien}"
+
+    event = {
+        'summary': f"{prefix} {mon}",
+        'location': phong,
+        'description': description,
+        'start': {'dateTime': start_dt.isoformat(), 'timeZone': 'Asia/Ho_Chi_Minh'},
+        'end': {'dateTime': end_dt.isoformat(), 'timeZone': 'Asia/Ho_Chi_Minh'},
+        'recurrence': [f"RRULE:FREQ=WEEKLY;UNTIL={end_date.strftime('%Y%m%d')}T235959Z"],
+        'reminders': {'useDefault': False, 'overrides': reminders if reminders else []}
+    }
+
+    created_event = service.events().insert(calendarId='primary', body=event).execute()
+    print(f"📅 Đã tạo sự kiện: {created_event.get('summary')}")
+    return created_event.get('id')
+
+
+# ---------------- Xoá sự kiện theo prefix ----------------
+def xoa_su_kien_tkb(service, prefix="[TKB]"):
+    events_result = service.events().list(
+        calendarId='primary', singleEvents=True, orderBy='startTime', maxResults=2500
+    ).execute()
+    events = events_result.get('items', [])
+
+    count = 0
+    for event in events:
+        if 'summary' in event and event['summary'].startswith(prefix):
+            service.events().delete(calendarId='primary', eventId=event['id']).execute()
+            count += 1
+
+    print(f"🗑️ Đã xoá {count} sự kiện có prefix '{prefix}'")
+    return count
