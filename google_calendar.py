@@ -10,21 +10,44 @@ import streamlit as st
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 
+def _normalize_env_value(s: str) -> str:
+    """Chuẩn hoá giá trị trong env var:
+    - loại bỏ dấu ngoặc kép/dấu nháy đôi nếu người dùng vô tình bao quanh
+    - chuyển các chuỗi '\\n' thành newline thực
+    - trim khoảng trắng đầu/cuối
+    """
+    if s is None:
+        return None
+    s = str(s).strip()
+    if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
+        s = s[1:-1]
+    s = s.replace('\\n', '\n')  # đổi chuỗi "\n" thành newline thực
+    return s
+
+
 # ---------------- Đảm bảo có file credentials/token ----------------
 def ensure_credentials_files():
     creds_str = os.environ.get("GOOGLE_CREDENTIALS")
+    creds_str = _normalize_env_value(creds_str)
     if creds_str:
-        with open("credentials.json", "w", encoding="utf-8") as f:
-            f.write(creds_str)
-        print("✅ Đã tạo credentials.json từ biến môi trường")
+        try:
+            with open("credentials.json", "w", encoding="utf-8") as f:
+                f.write(creds_str)
+            print(f"✅ Đã tạo credentials.json từ biến môi trường (chiều dài: {len(creds_str)} chars)")
+        except Exception as e:
+            print(f"❌ Lỗi khi ghi credentials.json: {e}")
     else:
         print("❌ Không tìm thấy GOOGLE_CREDENTIALS")
 
     token_str = os.environ.get("GOOGLE_TOKEN")
+    token_str = _normalize_env_value(token_str)
     if token_str:
-        with open("token.json", "w", encoding="utf-8") as f:
-            f.write(token_str)
-        print("✅ Đã tạo token.json từ biến môi trường")
+        try:
+            with open("token.json", "w", encoding="utf-8") as f:
+                f.write(token_str)
+            print(f"✅ Đã tạo token.json từ biến môi trường (chiều dài: {len(token_str)} chars)")
+        except Exception as e:
+            print(f"❌ Lỗi khi ghi token.json: {e}")
     else:
         print("⚠️ Không tìm thấy GOOGLE_TOKEN")
 
@@ -60,7 +83,6 @@ def dang_nhap_google():
             raise FileNotFoundError("❌ Không tìm thấy credentials.json")
         try:
             flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-            # Yêu cầu refresh_token luôn luôn được cấp
             creds = flow.run_local_server(port=0, access_type="offline", prompt="consent")
             with open('token.json', 'w') as token:
                 token.write(creds.to_json())
@@ -69,7 +91,6 @@ def dang_nhap_google():
             st.error(f"Lỗi đăng nhập Google: {e}")
             print(f"❌ Lỗi đăng nhập Google: {e}")
 
-    # Trả về service để gọi API Calendar
     service = build('calendar', 'v3', credentials=creds)
     return service
 
@@ -99,7 +120,6 @@ def tao_su_kien(service, mon, phong, giang_vien,
         f"{current.strftime('%d/%m/%Y')} {end_time}", "%d/%m/%Y %H:%M"
     )
 
-    # Mô tả sự kiện
     description = f"Phòng: {phong}"
     if giang_vien and str(giang_vien).strip().lower() not in ["none", "nan", ""]:
         description += f"\nGiảng viên: {giang_vien}"
