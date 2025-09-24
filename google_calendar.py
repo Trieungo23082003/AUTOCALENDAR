@@ -1,14 +1,17 @@
 import os
 import datetime as dt
+import json
+import secrets
+
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 
 import streamlit as st
-import json
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
+
 
 # ---------------- Đọc credentials từ biến môi trường ----------------
 def _load_client_config():
@@ -17,6 +20,7 @@ def _load_client_config():
         raise RuntimeError("❌ Thiếu GOOGLE_CREDENTIALS env")
     creds_str = creds_str.strip().replace('\\n', '\n')
     return json.loads(creds_str)
+
 
 # ---------------- Lấy URL đăng nhập Google ----------------
 def get_auth_url():
@@ -30,12 +34,17 @@ def get_auth_url():
         scopes=SCOPES,
         redirect_uri=redirect_uri
     )
-    auth_url, state = flow.authorization_url(
+
+    # Sinh state random để phân biệt user session
+    state = secrets.token_urlsafe(16)
+    auth_url, _ = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
-        prompt="consent"
+        prompt="consent",
+        state=state
     )
-    return auth_url
+    return auth_url, state
+
 
 # ---------------- Đổi code thành token ----------------
 def exchange_code_for_token(code: str):
@@ -50,6 +59,7 @@ def exchange_code_for_token(code: str):
     flow.fetch_token(code=code)
     creds = flow.credentials
     return build("calendar", "v3", credentials=creds)
+
 
 # ---------------- Tạo sự kiện ----------------
 def tao_su_kien(service, mon, phong, giang_vien,
@@ -90,6 +100,7 @@ def tao_su_kien(service, mon, phong, giang_vien,
 
     created_event = service.events().insert(calendarId='primary', body=event).execute()
     return created_event.get('id')
+
 
 # ---------------- Xoá sự kiện ----------------
 def xoa_su_kien_tkb(service, prefix="[TKB]"):
