@@ -2,6 +2,7 @@ import streamlit as st
 import io
 import os
 import traceback
+import secrets
 
 from read_excel import doc_tkb
 from read_excel_teacher import doc_tkb_giangvien
@@ -15,7 +16,6 @@ from google_calendar import (
 
 # ---------------- Helper ----------------
 def get_uploaded_bytes(uploaded_file):
-    """Lưu bytes của file upload vào session_state để reuse sau rerun"""
     if uploaded_file is None:
         return None
     if (
@@ -35,12 +35,10 @@ def show_exception(e):
 # ---------------- Streamlit App ----------------
 def main():
     st.set_page_config(page_title="AutoCalendar", layout="wide")
-    import os
-    print("DEBUG >>> GOOGLE_REDIRECT_URI =", repr(os.environ.get("GOOGLE_REDIRECT_URI")))
     st.title("📅 AutoCalendar - TKB lên Google Calendar")
 
     # --- Đăng nhập Google ---
-    query_params = st.query_params  # Streamlit 1.27+ trở lên
+    query_params = st.query_params  # Streamlit 1.27+
     if "code" in query_params and "google_service" not in st.session_state:
         code = query_params["code"]
         try:
@@ -51,7 +49,9 @@ def main():
             show_exception(e)
 
     if "google_service" not in st.session_state:
-        login_url = get_auth_url()
+        # Sinh state random cho từng session
+        login_url, state = get_auth_url()
+        st.session_state["oauth_state"] = state
         st.markdown(f"[🔑 Đăng nhập Google]({login_url})")
         st.stop()
 
@@ -86,7 +86,6 @@ def main():
                         else:
                             events = doc_tkb_giangvien(bio, ten_gv)
 
-                    # Lưu trạng thái checked cho từng sự kiện
                     for e in events:
                         e["checked"] = True
                     st.session_state["preview_events"] = events
@@ -159,4 +158,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
