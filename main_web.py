@@ -5,7 +5,12 @@ import traceback
 
 from read_excel import doc_tkb
 from read_excel_teacher import doc_tkb_giangvien
-from google_calendar import dang_nhap_google, tao_su_kien, xoa_su_kien_tkb
+from google_calendar import (
+    get_auth_url,
+    exchange_code_for_token,
+    tao_su_kien,
+    xoa_su_kien_tkb,
+)
 
 
 # ---------------- Helper ----------------
@@ -32,12 +37,25 @@ def main():
     st.set_page_config(page_title="AutoCalendar", layout="wide")
     st.title("📅 AutoCalendar - TKB lên Google Calendar")
 
-    # --- Đăng nhập Google trước ---
-    service = dang_nhap_google()
-    if service is None:
-        st.info("👉 Hãy đăng nhập Google để tiếp tục.")
+    # --- Đăng nhập Google ---
+    query_params = st.query_params  # Streamlit 1.27+ trở lên
+    if "code" in query_params and "google_service" not in st.session_state:
+        code = query_params["code"]
+        try:
+            service = exchange_code_for_token(code)
+            st.session_state["google_service"] = service
+            st.success("✅ Đăng nhập Google thành công!")
+        except Exception as e:
+            show_exception(e)
+
+    if "google_service" not in st.session_state:
+        login_url = get_auth_url()
+        st.markdown(f"[🔑 Đăng nhập Google]({login_url})")
         st.stop()
 
+    service = st.session_state["google_service"]
+
+    # --- App logic sau khi login ---
     mode = st.radio("Chế độ:", ["Sinh viên", "Giảng viên"])
 
     ten_gv = ""
