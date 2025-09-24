@@ -35,6 +35,8 @@ def show_exception(e):
 # ---------------- Streamlit App ----------------
 def main():
     st.set_page_config(page_title="AutoCalendar", layout="wide")
+    import os
+    print("DEBUG >>> GOOGLE_REDIRECT_URI =", repr(os.environ.get("GOOGLE_REDIRECT_URI")))
     st.title("📅 AutoCalendar - TKB lên Google Calendar")
 
     # --- Đăng nhập Google ---
@@ -157,3 +159,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
