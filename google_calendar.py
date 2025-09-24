@@ -1,70 +1,80 @@
 import os
 import datetime as dt
-import json
-from google_auth_oauthlib.flow import Flow
-from googleapiclient.discovery import build
 import streamlit as st
+
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow
+from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
 
 # Phạm vi quyền cho Google Calendar
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
-def _normalize_env_value(s: str) -> str:
-    if s is None:
-        return None
-    s = str(s).strip()
-    if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
-        s = s[1:-1]
-    s = s.replace('\\n', '\n')
-    return s
+# Lấy URL domain của app từ ENV (nếu không có thì mặc định local)
+REDIRECT_URI = os.environ.get(
+    "GOOGLE_REDIRECT_URI",
+    "http://localhost:8501"
+)
 
-# ---------------- Đảm bảo có file credentials ----------------
-def ensure_credentials_files():
-    creds_str = os.environ.get("GOOGLE_CREDENTIALS")
-    creds_str = _normalize_env_value(creds_str)
-    if creds_str:
-        try:
-            with open("credentials.json", "w", encoding="utf-8") as f:
-                f.write(creds_str)
-            print(f"✅ Đã tạo credentials.json từ biến môi trường (chiều dài: {len(creds_str)} chars)")
-        except Exception as e:
-            print(f"❌ Lỗi khi ghi credentials.json: {e}")
-    else:
-        print("❌ Không tìm thấy GOOGLE_CREDENTIALS")
 
-# ---------------- Đăng nhập Google ----------------
 def dang_nhap_google():
-    ensure_credentials_files()
+    """
+    Hàm xử lý OAuth login.
+    Nếu chưa đăng nhập → hiển thị nút login.
+    Nếu đăng nhập rồi → trả về service Google Calendar.
+    """
 
-    # Load config từ credentials.json
-    with open("credentials.json", "r", encoding="utf-8") as f:
-        creds_config = json.load(f)
-
-    flow = Flow.from_client_config(
-    creds_config,
-    scopes=SCOPES,
-    redirect_uri="https://autocalendar-production.up.railway.app"
-) 
-    # 🚨 Khi deploy Railway: đổi redirect_uri thành URL Railway
-
-    if "code" not in st.query_params:
-        auth_url, _ = flow.authorization_url(prompt="consent")
-        st.markdown(f"[👉 Đăng nhập Google để cấp quyền]({auth_url})")
+    # Đọc credentials.json từ biến môi trường GOOGLE_CREDENTIALS
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS")
+    if not creds_json:
+        st.error("❌ Thiếu GOOGLE_CREDENTIALS trong biến môi trường Railway.")
         return None
-    else:
-        code = st.query_params["code"]
-        flow.fetch_token(code=code)
-        creds = flow.credentials
-        service = build("calendar", "v3", credentials=creds)
-        return service
 
-# ---------------- Tạo sự kiện ----------------
+    # Kiểm tra session đã có token chưa
+    if "google_token" not in st.session_state:
+        flow = Flow.from_client_config(
+            eval(creds_json),  # chuyển string JSON → dict
+            scopes=SCOPES,
+            redirect_uri=REDIRECT_URI,
+        )
+
+        auth_url, _ = flow.authorization_url(
+            access_type="offline",
+            include_granted_scopes="true",
+            prompt="consent"
+        )
+
+        st.markdown(f"[👉 Đăng nhập với Google]({auth_url})")
+        return None
+
+    # Nếu đã có token → tạo credentials
+    creds = Credentials.from_authorized_user_info(
+        st.session_state["google_token"], SCOPES
+    )
+
+    # Refresh token nếu hết hạn
+    if creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+
+    # Tạo service
+    service = build("calendar", "v3", credentials=creds)
+    return service
+
+
+def luu_token(token_dict):
+    """Lưu token Google vào session"""
+    st.session_state["google_token"] = token_dict
+
+
 def tao_su_kien(service, mon, phong, giang_vien,
                 start_date, end_date, weekday, start_time, end_time,
                 reminders=None, prefix="[TKB]"):
 
+    # Parse ngày
     start_date = dt.datetime.strptime(start_date.strip(), "%d/%m/%Y").date()
     end_date = dt.datetime.strptime(end_date.strip(), "%d/%m/%Y").date()
 
+    # Google weekday: 0=Mon, 6=Sun
     google_weekday = weekday - 2
     if google_weekday < 0:
         google_weekday = 6
@@ -95,10 +105,9 @@ def tao_su_kien(service, mon, phong, giang_vien,
     }
 
     created_event = service.events().insert(calendarId='primary', body=event).execute()
-    print(f"📅 Đã tạo sự kiện: {created_event.get('summary')}")
     return created_event.get('id')
 
-# ---------------- Xoá sự kiện theo prefix ----------------
+
 def xoa_su_kien_tkb(service, prefix="[TKB]"):
     events_result = service.events().list(
         calendarId='primary', singleEvents=True, orderBy='startTime', maxResults=2500
@@ -111,6 +120,4 @@ def xoa_su_kien_tkb(service, prefix="[TKB]"):
             service.events().delete(calendarId='primary', eventId=event['id']).execute()
             count += 1
 
-    print(f"🗑️ Đã xoá {count} sự kiện có prefix '{prefix}'")
     return count
-
