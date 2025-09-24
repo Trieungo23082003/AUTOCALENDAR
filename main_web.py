@@ -32,6 +32,12 @@ def main():
     st.set_page_config(page_title="AutoCalendar", layout="wide")
     st.title("📅 AutoCalendar - TKB lên Google Calendar")
 
+    # --- Đăng nhập Google trước ---
+    service = dang_nhap_google()
+    if service is None:
+        st.info("👉 Hãy đăng nhập Google để tiếp tục.")
+        st.stop()
+
     mode = st.radio("Chế độ:", ["Sinh viên", "Giảng viên"])
 
     ten_gv = ""
@@ -87,39 +93,6 @@ def main():
         else:
             st.info("Chưa có dữ liệu xem trước. Bấm '👀 Xem trước' để đọc file.")
 
-        # ---------------- KIỂM TRA CREDENTIALS ----------------
-        has_credentials = os.path.exists("credentials.json") or bool(
-            os.environ.get("GOOGLE_CREDENTIALS")
-        )
-        has_token = os.path.exists("token.json") or bool(os.environ.get("GOOGLE_TOKEN"))
-
-        if not has_credentials:
-            st.info(
-                "⚠️ Chưa có credentials.json. Trên Railway hãy đặt biến môi trường "
-                "`GOOGLE_CREDENTIALS` (nội dung file credentials.json)."
-            )
-        if not has_token:
-            st.info(
-                "⚠️ Chưa có token.json. Hãy chạy local để sinh token.json, "
-                "sau đó copy nội dung vào biến môi trường `GOOGLE_TOKEN` trên Railway."
-            )
-
-        # Debug (không in bí mật, chỉ trạng thái)
-        with st.expander("🔧 Debug môi trường (chỉ hiển thị trạng thái)"):
-            creds_env = os.environ.get("GOOGLE_CREDENTIALS")
-            token_env = os.environ.get("GOOGLE_TOKEN")
-            st.write("GOOGLE_CREDENTIALS present:", bool(creds_env))
-            st.write("GOOGLE_CREDENTIALS length (chars):", len(creds_env) if creds_env else 0)
-            st.write("GOOGLE_TOKEN present:", bool(token_env))
-            st.write("GOOGLE_TOKEN length (chars):", len(token_env) if token_env else 0)
-            if st.button("Ghi env -> file (dùng để kiểm tra)"):
-                try:
-                    from google_calendar import ensure_credentials_files
-                    ensure_credentials_files()
-                    st.success("Đã ghi credentials.json/token.json từ biến môi trường (nếu có).")
-                except Exception as e:
-                    st.error(f"Lỗi khi ghi file từ env: {e}")
-
         # ---------------- TẠO SỰ KIỆN ----------------
         if st.button("📅 Tạo sự kiện trên Google Calendar"):
             try:
@@ -127,44 +100,36 @@ def main():
                 if not events:
                     st.warning("⚠️ Chưa chọn sự kiện nào.")
                 else:
-                    if not (has_credentials and has_token):
-                        st.error("❌ Thiếu credentials/token. Không thể đăng nhập Google.")
-                    else:
-                        with st.spinner("⏳ Đang tạo sự kiện trên Google Calendar..."):
-                            service = dang_nhap_google()
-                            created = 0
-                            for e in events:
-                                try:
-                                    tao_su_kien(
-                                        service=service,
-                                        mon=e["mon"],
-                                        phong=e.get("phong", ""),
-                                        giang_vien=e.get("giang_vien", None),
-                                        start_date=e["ngay_bat_dau"],
-                                        end_date=e["ngay_ket_thuc"],
-                                        weekday=e["thu"],
-                                        start_time=e["gio_bd"],
-                                        end_time=e["gio_kt"],
-                                        reminders=[{"method": "popup", "minutes": 10}],
-                                        prefix=prefix,
-                                    )
-                                    created += 1
-                                except Exception as sub_e:
-                                    st.warning(f"Lỗi tạo event '{e.get('mon')}' — {sub_e}")
-                            st.success(f"✅ Hoàn tất! Đã tạo {created} sự kiện.")
+                    with st.spinner("⏳ Đang tạo sự kiện trên Google Calendar..."):
+                        created = 0
+                        for e in events:
+                            try:
+                                tao_su_kien(
+                                    service=service,
+                                    mon=e["mon"],
+                                    phong=e.get("phong", ""),
+                                    giang_vien=e.get("giang_vien", None),
+                                    start_date=e["ngay_bat_dau"],
+                                    end_date=e["ngay_ket_thuc"],
+                                    weekday=e["thu"],
+                                    start_time=e["gio_bd"],
+                                    end_time=e["gio_kt"],
+                                    reminders=[{"method": "popup", "minutes": 10}],
+                                    prefix=prefix,
+                                )
+                                created += 1
+                            except Exception as sub_e:
+                                st.warning(f"Lỗi tạo event '{e.get('mon')}' — {sub_e}")
+                        st.success(f"✅ Hoàn tất! Đã tạo {created} sự kiện.")
             except Exception as e:
                 show_exception(e)
 
         # ---------------- XOÁ SỰ KIỆN ----------------
         if st.button("🗑️ Xoá toàn bộ sự kiện theo prefix"):
             try:
-                if not (has_credentials and has_token):
-                    st.error("❌ Thiếu credentials/token. Không thể đăng nhập Google.")
-                else:
-                    with st.spinner(f"⏳ Đang xoá sự kiện prefix '{prefix}'..."):
-                        service = dang_nhap_google()
-                        count = xoa_su_kien_tkb(service, prefix=prefix)
-                        st.success(f"🗑️ Đã xoá {count} sự kiện có prefix '{prefix}'.")
+                with st.spinner(f"⏳ Đang xoá sự kiện prefix '{prefix}'..."):
+                    count = xoa_su_kien_tkb(service, prefix=prefix)
+                    st.success(f"🗑️ Đã xoá {count} sự kiện có prefix '{prefix}'.")
             except Exception as e:
                 show_exception(e)
 
