@@ -39,7 +39,11 @@ def dang_nhap_google():
     with open("credentials.json", "r", encoding="utf-8") as f:
         creds_config = json.load(f)
 
-    flow = Flow.from_client_config(creds_config, scopes=SCOPES, redirect_uri="http://localhost:8501") 
+    flow = Flow.from_client_config(
+    creds_config,
+    scopes=SCOPES,
+    redirect_uri="https://autocalendar-production.up.railway.app"
+) 
     # 🚨 Khi deploy Railway: đổi redirect_uri thành URL Railway
 
     if "code" not in st.query_params:
@@ -109,3 +113,4 @@ def xoa_su_kien_tkb(service, prefix="[TKB]"):
 
     print(f"🗑️ Đã xoá {count} sự kiện có prefix '{prefix}'")
     return count
+
