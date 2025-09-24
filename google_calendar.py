@@ -10,10 +10,10 @@ from googleapiclient.discovery import build
 # Phạm vi quyền cho Google Calendar
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
-# Lấy URL domain của app từ ENV (nếu không có thì mặc định local)
+# Redirect URI: lấy từ biến môi trường (Railway) hoặc mặc định localhost khi chạy local
 REDIRECT_URI = os.environ.get(
     "GOOGLE_REDIRECT_URI",
-    "http://localhost:8501"
+    "http://localhost:8501"   # fallback cho local
 )
 
 
@@ -30,7 +30,7 @@ def dang_nhap_google():
         st.error("❌ Thiếu GOOGLE_CREDENTIALS trong biến môi trường Railway.")
         return None
 
-    # Kiểm tra session đã có token chưa
+    # Nếu chưa có token trong session → tạo flow để login
     if "google_token" not in st.session_state:
         flow = Flow.from_client_config(
             eval(creds_json),  # chuyển string JSON → dict
@@ -56,7 +56,7 @@ def dang_nhap_google():
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
 
-    # Tạo service
+    # Tạo service Calendar
     service = build("calendar", "v3", credentials=creds)
     return service
 
