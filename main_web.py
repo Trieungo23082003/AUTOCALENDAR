@@ -42,7 +42,7 @@ def main():
     ui_style.navbar()
 
     # Lấy param ?menu=...
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params
     menu = query_params.get("menu", ["home"])[0]
 
     # Render trang
@@ -173,6 +173,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
