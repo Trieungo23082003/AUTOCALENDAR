@@ -6,18 +6,23 @@ def apply_style(logo_path="utc2.jpg", position="left"):
         encoded = base64.b64encode(f.read()).decode()
 
     if position == "right":
-        align = "right:20px; top:20px;"
+        align = "right:20px; top:80px;"
     else:
-        align = "left:20px; top:20px;"
+        align = "left:20px; top:80px;"
 
     st.markdown(
-        f"""
+        """
         <style>
-        .stApp {{
-            background: white;
-            color: #2c3e50;
-            font-family: "Segoe UI", sans-serif;
-        }}
+        .stApp {
+            background-color: #e6f0ff; /* nền xanh lợt */
+        }
+        .block-container {
+            background: #ffffff;
+            padding: 2rem 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            max-width: 900px;
+        }
 
         .logo-container {{
             position: fixed;
@@ -26,7 +31,7 @@ def apply_style(logo_path="utc2.jpg", position="left"):
             z-index: 1000;
         }}
         .logo-container img {{
-            width: 80px;
+            width: 120px;
             border-radius: 12px;
             box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
         }}
@@ -77,4 +82,5 @@ def apply_style(logo_path="utc2.jpg", position="left"):
         """,
         unsafe_allow_html=True,
     )
+
 
