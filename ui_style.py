@@ -43,7 +43,6 @@ def apply_style(logo_path="utc2.jpg"):
             display: inline-block;
             margin: auto;
             text-shadow: 2px 2px 6px rgba(0,0,0,0.2);
-            transform: rotate(-1deg); /* chữ hơi uốn lượn */
         }}
 
         /* Logo cố định bên phải */
@@ -60,29 +59,36 @@ def apply_style(logo_path="utc2.jpg"):
             box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
         }}
 
-        /* Box xanh đậm bao quanh label + input */
+        /* Box xanh đậm bao toàn bộ phần chọn */
         .highlight-box {{
             background-color: #1e3a8a;
             color: white;
-            padding: 12px 16px;
+            padding: 14px 18px;
             border-radius: 12px;
             margin: 16px 0;
         }}
 
+        /* Làm label + chữ trong box sáng lên */
         .highlight-box label, 
         .highlight-box div, 
         .highlight-box input {{
             color: white !important;
-            font-weight: 600;
+            font-weight: 600 !important;
         }}
 
-        /* Style riêng cho input trong box */
+        /* Input trong box */
         .highlight-box input {{
             background-color: #2d4ea0 !important;
             border: none !important;
             border-radius: 6px;
             padding: 6px;
             color: #fff !important;
+        }}
+
+        /* Radio button text */
+        .highlight-box .stRadio label {{
+            color: white !important;
+            font-weight: 600 !important;
         }}
         </style>
         {logo_html}
