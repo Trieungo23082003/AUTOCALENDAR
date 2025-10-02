@@ -1,10 +1,10 @@
 import streamlit as st
+import ui_style
 import io
 import os
 import traceback
 import secrets
 
-from ui_style import apply_style
 from read_excel import doc_tkb
 from read_excel_teacher import doc_tkb_giangvien
 from google_calendar import (
@@ -36,7 +36,7 @@ def show_exception(e):
 # ---------------- Streamlit App ----------------
 def main():
     st.set_page_config(page_title="AutoCalendar", layout="wide")
-    apply_custom_style()
+    ui_style.apply_style("thoikhoabieu.jpg", opacity=0.3)
  
    
 
@@ -166,6 +166,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
