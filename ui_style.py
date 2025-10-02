@@ -1,32 +1,36 @@
 import streamlit as st
 import base64
 
-def apply_style(image_path="thoikhoabieu.jpg", opacity=0.3):
-    """
-    Tạo style cho app với nền ảnh + chữ xanh bo tròn viền đẹp
-    - image_path: ảnh nền (cùng thư mục với main.py)
-    - opacity: độ mờ nền (0 -> trong suốt, 1 -> rõ nét)
-    """
-
-    # Đọc ảnh và encode sang base64
-    with open(image_path, "rb") as f:
+def apply_style(logo_path="utc2.png", position="left"):
+    with open(logo_path, "rb") as f:
         encoded = base64.b64encode(f.read()).decode()
+
+    if position == "right":
+        align = "right:20px; top:20px;"
+    else:
+        align = "left:20px; top:20px;"
 
     st.markdown(
         f"""
         <style>
-        /* Toàn bộ nền */
         .stApp {{
-            background: 
-                linear-gradient(rgba(255,255,255,{opacity}), rgba(255,255,255,{opacity})), 
-                url("data:image/png;base64,{encoded}");
-            background-size: cover;
-            background-position: center;
+            background: white;
             color: #2c3e50;
             font-family: "Segoe UI", sans-serif;
         }}
 
-        /* Tiêu đề */
+        .logo-container {{
+            position: fixed;
+            {align}
+            width: 80px;
+            z-index: 1000;
+        }}
+        .logo-container img {{
+            width: 80px;
+            border-radius: 12px;
+            box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
+        }}
+
         h1 {{
             text-align: center;
             color: #2e7d32;
@@ -36,16 +40,9 @@ def apply_style(image_path="thoikhoabieu.jpg", opacity=0.3):
             border-radius: 12px;
             display: inline-block;
             padding: 8px 20px;
-            background-color: rgba(255, 255, 255, 0.7);
+            background-color: rgba(255, 255, 255, 0.8);
         }}
 
-        /* Các nhãn input */
-        .stRadio label, .stTextInput label {{
-            color: #1b5e20;
-            font-weight: bold;
-        }}
-
-        /* Nút bấm */
         .stButton>button {{
             background-color: #43a047;
             color: white;
@@ -61,12 +58,22 @@ def apply_style(image_path="thoikhoabieu.jpg", opacity=0.3):
             transform: scale(1.08);
         }}
 
-        /* Thông báo */
-        .stAlert {{
-            border-radius: 12px;
+        /* 🔵 Box chữ xanh bo tròn */
+        .highlight-box {{
+            display: inline-block;
+            background-color: #2e7d32;
+            color: white;
+            font-weight: bold;
+            padding: 8px 18px;
+            border-radius: 25px;
+            margin: 10px 0;
+            box-shadow: 1px 1px 4px rgba(0,0,0,0.2);
         }}
         </style>
+
+        <div class="logo-container">
+            <img src="data:image/png;base64,{encoded}" alt="Logo">
+        </div>
         """,
         unsafe_allow_html=True,
     )
-
