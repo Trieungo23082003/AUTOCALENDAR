@@ -1,7 +1,7 @@
 import streamlit as st
 import base64
 
-def apply_style(image_path="tkb.png", opacity=0.3):
+def apply_style(image_path="thoikhoabieu.jpg", opacity=0.3):
     """
     Tạo style cho app với nền ảnh + chữ xanh bo tròn viền đẹp
     - image_path: ảnh nền (cùng thư mục với main.py)
@@ -69,3 +69,4 @@ def apply_style(image_path="tkb.png", opacity=0.3):
         """,
         unsafe_allow_html=True,
     )
+
