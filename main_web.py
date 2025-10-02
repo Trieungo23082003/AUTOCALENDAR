@@ -36,12 +36,13 @@ def show_exception(e):
 # ---------------- Streamlit App ----------------
 def main():
     st.set_page_config(page_title="AutoCalendar", layout="wide")
-    ui_style.apply_background("tkb.png", opacity=0.2)
+    apply_custom_style()
+ 
    
 
     # Tiêu đề trang
     st.title("📅 AutoCalendar - TKB lên Google Calendar")
-    st.write("Đây là nội dung nổi trên nền ảnh mờ.")
+   
 
 
     # --- Đăng nhập Google ---
@@ -165,6 +166,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
