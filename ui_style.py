@@ -1,7 +1,7 @@
 import streamlit as st
 import base64
 
-def apply_style(logo_path="logo.png"):
+def apply_style(logo_path="utc2.jpg"):
     """Chèn CSS + logo vào giao diện Streamlit"""
     # Đọc file ảnh logo và encode sang base64
     try:
@@ -59,3 +59,4 @@ def apply_style(logo_path="logo.png"):
         """,
         unsafe_allow_html=True
     )
+
