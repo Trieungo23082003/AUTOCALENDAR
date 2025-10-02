@@ -1,10 +1,10 @@
 import streamlit as st
-import ui_style
 import io
 import os
 import traceback
 import secrets
 
+from ui_style import apply_style
 from read_excel import doc_tkb
 from read_excel_teacher import doc_tkb_giangvien
 from google_calendar import (
@@ -165,6 +165,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
