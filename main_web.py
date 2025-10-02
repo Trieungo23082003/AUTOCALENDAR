@@ -36,7 +36,7 @@ def show_exception(e):
 # ---------------- Streamlit App ----------------
 def main():
     st.set_page_config(page_title="AutoCalendar", layout="wide")
-    ui_style.apply_background("tkb.png", opacity=0.2
+    ui_style.apply_background("tkb.png", opacity=0.2)
    
 
     # Tiêu đề trang
@@ -165,6 +165,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
