@@ -36,7 +36,7 @@ def show_exception(e):
 # ---------------- Streamlit App ----------------
 def main():
     st.set_page_config(page_title="AutoCalendar", layout="wide")
-    ui_style.apply_style("utc2.jpg", position="right")
+    ui_style.apply_style("utc2.jpg")
  
    
 
@@ -166,6 +166,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
