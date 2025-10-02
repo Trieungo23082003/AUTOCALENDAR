@@ -37,16 +37,20 @@ def show_exception(e):
 # ---------------- Streamlit App ----------------
 def main():
     st.set_page_config(page_title="AutoCalendar", layout="wide")
+
     # Vẽ thanh navbar
-ui_style.navbar()
+    ui_style.navbar()
 
-# Lấy param ?menu=...
-query_params = st.experimental_get_query_params()
-menu = query_params.get("menu", ["home"])[0]
+    # Lấy param ?menu=...
+    query_params = st.experimental_get_query_params()
+    menu = query_params.get("menu", ["home"])[0]
 
-# Render trang
-ui_style.render_page(menu)
+    # Render trang
+    ui_style.render_page(menu)
+
+    # Tiêu đề trang
     st.title("📅 AutoCalendar - TKB lên Google Calendar")
+
 
     # --- Đăng nhập Google ---
     query_params = st.query_params  # Streamlit 1.27+
@@ -169,6 +173,7 @@ ui_style.render_page(menu)
 
 if __name__ == "__main__":
     main()
+
 
 
 
