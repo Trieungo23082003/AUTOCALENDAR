@@ -3,73 +3,56 @@ import streamlit as st
 def apply_style():
     """Chèn CSS vào giao diện Streamlit"""
     st.markdown(
-       """
-       <style>
-       /* Nền xanh dương lợt */
-       .stApp {
-           background-color: #f0f6ff;
-       }
+        """
+        <style>
+        /* Nền tổng thể */
+        .stApp {
+            background: linear-gradient(rgba(255,255,255,0.7), rgba(255,255,255,0.7)), 
+                        url("https://i.ibb.co/6Jxn0Cx/timetable-bg.jpg");
+            background-size: cover;
+            background-position: center;
+            color: #2c3e50;
+        }
 
-       /* Khung container */
-       .block-container {
-           background: #ffffff;
-           padding: 2rem 2.5rem;
-           border-radius: 16px;
-           box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-           max-width: 900px;
-       }
+        /* Tiêu đề */
+        h1 {
+            text-align: center;
+            color: #2e7d32;  /* xanh lá đậm */
+            font-weight: 800;
+            text-shadow: 1px 1px 2px #c8e6c9;
+        }
 
-       /* Tiêu đề */
-       h1, h2, h3 {
-           color: #1e40af;
-           text-align: center;
-           font-weight: 700;
-       }
+        /* Radio button + Input */
+        .stRadio label, .stTextInput label {
+            color: #1b5e20;
+            font-weight: bold;
+        }
 
-       /* Radio button */
-       div[role="radiogroup"] > label {
-           background: #f9fbff;
-           border: 2px solid #2563eb;
-           border-radius: 8px;
-           color: #2563eb;
-           padding: 6px 16px;
-           margin-right: 8px;
-           cursor: pointer;
-           transition: 0.3s;
-       }
-       div[role="radiogroup"] > label:hover {
-           background: #eef4ff;
-       }
-       div[role="radiogroup"] > label[data-baseweb="radio"]:has(input:checked) {
-           background: #2563eb;
-           color: white !important;
-       }
+        /* Các khung upload / card */
+        .stFileUploader, .stButton button {
+            border-radius: 12px;
+        }
 
-       /* Upload box */
-       .stFileUploader {
-           border: 2px dashed #60a5fa !important;
-           border-radius: 12px;
-           background: #f9fbff;
-           padding: 1rem;
-       }
-       .stFileUploader:hover {
-           border-color: #2563eb !important;
-           background: #eef4ff;
-       }
+        /* Nút bấm */
+        .stButton>button {
+            background-color: #43a047;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .stButton>button:hover {
+            background-color: #2e7d32;
+            transform: scale(1.05);
+        }
 
-       /* Nút bấm */
-       button[kind="primary"] {
-           background-color: #2563eb;
-           color: white;
-           border-radius: 8px;
-           padding: 0.6rem 1.2rem;
-           font-size: 1rem;
-           transition: 0.3s;
-       }
-       button[kind="primary"]:hover {
-           background-color: #1e40af;
-       }
-       </style>
-       """,
-       unsafe_allow_html=True
-   )
+        /* Thông báo */
+        .stAlert {
+            border-radius: 10px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
