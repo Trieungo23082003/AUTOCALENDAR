@@ -1,10 +1,11 @@
 import streamlit as st
+import ui_style
 import io
 import os
 import traceback
 import secrets
 
-from ui_style import apply_style 
+from ui_style import navbar, render_page
 from read_excel import doc_tkb
 from read_excel_teacher import doc_tkb_giangvien
 from google_calendar import (
@@ -36,7 +37,15 @@ def show_exception(e):
 # ---------------- Streamlit App ----------------
 def main():
     st.set_page_config(page_title="AutoCalendar", layout="wide")
-    apply_style()  # <--- gọi CSS ở đây
+    # Vẽ thanh navbar
+ui_style.navbar()
+
+# Lấy param ?menu=...
+query_params = st.experimental_get_query_params()
+menu = query_params.get("menu", ["home"])[0]
+
+# Render trang
+ui_style.render_page(menu)
     st.title("📅 AutoCalendar - TKB lên Google Calendar")
 
     # --- Đăng nhập Google ---
@@ -160,6 +169,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
