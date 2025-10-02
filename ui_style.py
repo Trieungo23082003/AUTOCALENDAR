@@ -2,7 +2,6 @@ import streamlit as st
 import base64
 
 def apply_style(logo_path="utc2.jpg"):
-    """Chèn CSS + logo vào giao diện Streamlit"""
     try:
         with open(logo_path, "rb") as f:
             logo_base64 = base64.b64encode(f.read()).decode()
@@ -32,12 +31,19 @@ def apply_style(logo_path="utc2.jpg"):
             max-width: 900px;
         }}
 
-        /* Tiêu đề */
+        /* Tiêu đề chính */
         h1 {{
             color: #1e3a8a;
             text-align: center;
             font-size: 2rem !important;
             font-weight: 700;
+            border: 3px solid #1e3a8a;
+            padding: 12px;
+            border-radius: 20px;
+            display: inline-block;
+            margin: auto;
+            text-shadow: 2px 2px 6px rgba(0,0,0,0.2);
+            transform: rotate(-1deg); /* chữ hơi uốn lượn */
         }}
 
         /* Logo cố định bên phải */
@@ -54,19 +60,32 @@ def apply_style(logo_path="utc2.jpg"):
             box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
         }}
 
-        /* Ô nền xanh đậm cho các mục */
+        /* Box xanh đậm bao quanh label + input */
         .highlight-box {{
             background-color: #1e3a8a;
             color: white;
             padding: 12px 16px;
-            border-radius: 10px;
-            margin: 12px 0;
+            border-radius: 12px;
+            margin: 16px 0;
+        }}
+
+        .highlight-box label, 
+        .highlight-box div, 
+        .highlight-box input {{
+            color: white !important;
             font-weight: 600;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }}
+
+        /* Style riêng cho input trong box */
+        .highlight-box input {{
+            background-color: #2d4ea0 !important;
+            border: none !important;
+            border-radius: 6px;
+            padding: 6px;
+            color: #fff !important;
         }}
         </style>
         {logo_html}
         """,
         unsafe_allow_html=True
     )
-
