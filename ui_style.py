@@ -3,7 +3,6 @@ import base64
 
 def apply_style(logo_path="utc2.jpg"):
     """Chèn CSS + logo vào giao diện Streamlit"""
-    # Đọc file ảnh logo và encode sang base64
     try:
         with open(logo_path, "rb") as f:
             logo_base64 = base64.b64encode(f.read()).decode()
@@ -13,14 +12,14 @@ def apply_style(logo_path="utc2.jpg"):
         </div>
         """
     except:
-        logo_html = ""  # nếu không tìm thấy logo thì bỏ qua
+        logo_html = ""
 
     st.markdown(
         f"""
         <style>
         /* Nền tổng thể */
         .stApp {{
-            background-color: #e6f0ff; /* nền xanh dương lợt */
+            background-color: #e6f0ff; 
             font-family: 'Inter', sans-serif;
         }}
 
@@ -54,10 +53,20 @@ def apply_style(logo_path="utc2.jpg"):
             border-radius: 12px;
             box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
         }}
+
+        /* Ô nền xanh đậm cho các mục */
+        .highlight-box {{
+            background-color: #1e3a8a;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin: 12px 0;
+            font-weight: 600;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }}
         </style>
         {logo_html}
         """,
         unsafe_allow_html=True
     )
-
 
