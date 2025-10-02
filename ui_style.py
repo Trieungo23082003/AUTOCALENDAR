@@ -44,7 +44,7 @@ def apply_style(logo_path="utc2.jpg"):
         /* Logo cố định bên phải */
         .logo-container {{
             position: fixed;
-            top: 20px;
+            top: 100px;
             right: 20px;
             width: 70px;
             z-index: 1000;
@@ -59,4 +59,5 @@ def apply_style(logo_path="utc2.jpg"):
         """,
         unsafe_allow_html=True
     )
+
 
