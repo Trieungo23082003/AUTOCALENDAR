@@ -1,7 +1,7 @@
 import streamlit as st
 import base64
 
-def apply_style(logo_path="utc2.png", position="left"):
+def apply_style(logo_path="utc2.jpg", position="left"):
     with open(logo_path, "rb") as f:
         encoded = base64.b64encode(f.read()).decode()
 
@@ -77,3 +77,4 @@ def apply_style(logo_path="utc2.png", position="left"):
         """,
         unsafe_allow_html=True,
     )
+
