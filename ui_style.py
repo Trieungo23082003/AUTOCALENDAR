@@ -6,9 +6,9 @@ def apply_style(logo_path="utc2.jpg", position="left"):
         encoded = base64.b64encode(f.read()).decode()
 
     if position == "right":
-        align = "right:20px; top:80px;"
+        align = "right:20px; top:20px;"
     else:
-        align = "left:20px; top:80px;"
+        align = "left:20px; top:20px;"
 
     st.markdown(
         """
@@ -82,5 +82,6 @@ def apply_style(logo_path="utc2.jpg", position="left"):
         """,
         unsafe_allow_html=True,
     )
+
 
 
